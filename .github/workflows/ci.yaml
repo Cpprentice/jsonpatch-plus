@@ -24,6 +24,13 @@ jobs:
         run: |
           python -m build
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-dist
+          path: dist/
+
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -55,7 +62,7 @@ jobs:
 
       - name: Upload coverage report (XML)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-xml
           path: coverage.xml
@@ -67,6 +74,7 @@ jobs:
       - compute-version
       - build
       - test
+    # if: ${{ !contains(needs.compute-version.outputs.version, 'dev') }}
     environment:
       name: pypi
       url: https://pypi.org/p/jsonpatch-plus
@@ -75,7 +83,17 @@ jobs:
     steps:
       - name: Print version to publish
         run: echo "Publishing version ${{ needs.compute-version.outputs.version }}"
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: python-dist
+          path: dist/
       - name: Print contents of dist
         run: ls -la dist
-#      - name: Publish package distributions to PyPI
-#        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Ensure version is non-dev
+        if: ${{ contains(needs.compute-version.outputs.version, 'dev') }}
+        run: |
+          echo "Refusing to publish a dev version!"
+          exit 1
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1.13.0
