@@ -74,7 +74,7 @@ jobs:
       - compute-version
       - build
       - test
-    # if: ${{ !contains(needs.compute-version.outputs.version, 'dev') }}
+    if: ${{ !contains(needs.compute-version.outputs.version, 'dev') }}
     environment:
       name: pypi
       url: https://pypi.org/p/jsonpatch-plus
