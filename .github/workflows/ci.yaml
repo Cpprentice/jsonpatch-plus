@@ -49,7 +49,7 @@ jobs:
           python -m pip install .[test]
 
       - name: Run tests with coverage
-        run: coverage run --source=src -m pytest tests
+        run: coverage run --source=src -m pytest test
       - name: Create XML Coverage report (fail under 75%)
         run: coverage xml --fail-under=75
 
