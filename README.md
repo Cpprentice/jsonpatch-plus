@@ -22,4 +22,4 @@ For this to work properly the first operation is always an AddOperation that
 adds the entire existing object therefore the tracking produces an addition for every JSONPointer in the document.
 
 ## CI Debug Counter
-1
+2
