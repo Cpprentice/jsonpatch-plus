@@ -1,0 +1,84 @@
+name: Build and Test
+
+on:
+  push:
+
+jobs:
+  compute-version:
+    uses: cpprentice/ci-templates/.github/workflows/compute-python-package-version.yaml@v1
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Optional: set up Python if your build needs it
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build
+        run: |
+          python -m build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml', '**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .[test]
+
+      - name: Run tests with coverage (fail under 75%)
+        run: |
+          coverage -m pytest -q \
+            --maxfail=1 \
+            --cov=src \
+            --cov-report=term-missing:skip-covered \
+            --cov-report=xml \
+            --cov-fail-under=75 \
+            tests
+
+      - name: Upload coverage report (XML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+
+  publish:
+    name: Publish package on pypi
+    runs-on: ubuntu-latest
+    needs:
+      - compute-version
+      - build
+      - test
+    environment:
+      name: pypi
+      url: https://pypi.org/p/jsonpatch-plus
+    permissions:
+      id-token: write
+    steps:
+      - name: Print version to publish
+        run: echo "Publishing version ${{ needs.compute-version.outputs.version }}"
+      - name: Print contents of dist
+        run: ls -la dist
+#      - name: Publish package distributions to PyPI
+#        uses: pypa/gh-action-pypi-publish@release/v1
