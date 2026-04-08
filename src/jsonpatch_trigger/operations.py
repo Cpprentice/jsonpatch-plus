@@ -8,6 +8,7 @@ from pydantic import PrivateAttr, Field, ConfigDict, BaseModel, Discriminator, T
     ValidationError, model_serializer, field_serializer
 
 from jsonpatch_trigger import json_type
+from jsonpatch_trigger.common import profile
 from jsonpatch_trigger.compat import PydanticJSONPath
 from jsonpatch_trigger.parents import make_parent_key_pairs
 from jsonpatch_trigger.preconditions import Precondition, IsArrayOrObjectPreconditionFunction, ExistsPreconditionFunction, \
@@ -115,6 +116,7 @@ class Operation(BaseModel, abc.ABC):
     #         return []
     #     return self._apply(onto)
 
+    @profile
     def apply_rfc(self, document: Any, change_tracker: ChangeTracker) -> Any:
         if not self.test_preconditions(document):
             return document
@@ -221,6 +223,7 @@ class AddOperation(Operation, AddRegistrationMixin):
         #     )
         # ]
 
+    @profile
     def register_rfc_operations(self, document: Any, patch_runner: TrackingJSONPatch):
         for parent_path, parent_match, selector, pointer in (
                 self.iterate_matches(self.locator, document, none_allowed=True)
@@ -290,6 +293,7 @@ class MoveOperation(Operation, MoveRegistrationMixin):
     target_locator: PydanticJSONPath
     constraint_strategy: PointerPairConstraintResolver = Field(default_factory=PointerPairConstraintResolver)
 
+    @profile
     def register_rfc_operations(self, document: Any, patch_runner: TrackingJSONPatch):
         source_data_tuple = self.iterate_matches(self.locator, document, none_allowed=True)
         target_data_tuple = self.iterate_matches(self.target_locator, document, none_allowed=True)
@@ -350,6 +354,7 @@ class CopyOperation(Operation, CopyRegistrationMixin):
             )
         ]
 
+    @profile
     def register_rfc_operations(self, document: Any, patch_runner: TrackingJSONPatch):
         source_data_tuple = self.iterate_matches(self.locator, document, none_allowed=True,
                                                  only_resolvable_pointers=True)
@@ -412,6 +417,7 @@ class RemoveOperation(Operation, RemovalRegistrationMixin):
         #             function=IsNotNonePreconditionFunction()
         #         )
         #     ]
+    @profile
     def register_rfc_operations(self, document: Any, patch_runner: TrackingJSONPatch):
         for parent_path, parent_match, selector, pointer in (
             self.iterate_matches(self.locator, document, none_allowed=False)

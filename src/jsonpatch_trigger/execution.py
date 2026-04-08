@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serial
     ValidationError
 
 from jsonpatch_trigger import make_jsonpath
+from jsonpatch_trigger.common import profile
 from jsonpatch_trigger.operations import Operation, Operation
 from jsonpatch_trigger.tracking import ChangeTracker
 
@@ -184,6 +185,7 @@ class OperationExecutionContext:
     def insert_custom_operation(self, operation: Operation, index: int):
         self.operations.insert(index, operation)
 
+    @profile
     def run(self, document: Any) -> Any:
 
         while self.operations:

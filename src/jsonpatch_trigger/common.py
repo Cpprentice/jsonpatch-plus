@@ -5,6 +5,13 @@ from jsonpath import JSONPath, JSONPointer
 from pydantic import TypeAdapter
 from pydantic_core import core_schema
 
+try:
+    from line_profiler import profile
+except ImportError:
+    # Create drop in replacement that does nothing if the profiler is not installed
+    profile = lambda x: x
+
+
 json_type = str | int | float | bool | None | Sequence[Any] | Mapping[str, Any]
 
 

@@ -7,9 +7,10 @@ import jsonpath
 from jsonpath import JSONPointer, JSONPatch, JSONPointerIndexError, JSONPointerKeyError
 from pydantic import BaseModel
 
-from jsonpatch_trigger.common import escape_json_pointer_part
+from jsonpatch_trigger.common import escape_json_pointer_part, profile
 
 
+@profile
 def get_all_subtree_pointers(
         document: Any,
         base_pointer: JSONPointer
@@ -80,18 +81,21 @@ class ChangeRegistrationMixin(BaseModel):
 
 
 class RemovalRegistrationMixin(ChangeRegistrationMixin):
+    @profile
     def pre_execution_registration(self, rfc_operation: jsonpath.patch.Op, change_tracker: ChangeTracker, document: Any):
         pointer = self._get_pointer(rfc_operation, ['path'])
         change_tracker.add_pointers(get_all_subtree_pointers(document, pointer), removal=True)
 
 
 class CopyRegistrationMixin(ChangeRegistrationMixin):
+    @profile
     def post_execution_registration(self, rfc_operation: jsonpath.patch.Op, change_tracker: ChangeTracker, document: Any):
         pointer = self._get_pointer(rfc_operation, ['dest', 'path'])
         change_tracker.add_pointers(get_all_subtree_pointers(document, pointer), removal=False)
 
 
 class MoveRegistrationMixin(CopyRegistrationMixin):
+    @profile
     def pre_execution_registration(self, rfc_operation: jsonpath.patch.Op, change_tracker: ChangeTracker,
                                    document: Any):
         pointer = self._get_pointer(rfc_operation, ['source', 'path'])
@@ -118,6 +122,7 @@ class TrackingJSONPatch:
             # this is a respective method to add an operation
 
             @functools.wraps(patch_attr)
+            @profile
             def wrapper(*args, **kwargs):
                 result = patch_attr(*args, **kwargs)
                 self._base.pre_execution_registration(result.ops[-1], self._tracker, self._document)
@@ -126,6 +131,7 @@ class TrackingJSONPatch:
             return wrapper
         return patch_attr
 
+    @profile
     def run(self, document: Any) -> Any:
         for operation in self._patch.ops:
             document = operation.apply(document)
