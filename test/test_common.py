@@ -39,3 +39,4 @@ def test_escape_pointer_part():
     assert escape_json_pointer_part('a.b') == 'a.b'
     assert escape_json_pointer_part('a/c') == 'a~1c'
     assert escape_json_pointer_part('a~c') == 'a~0c'
+    assert escape_json_pointer_part('°C') == '\\xb0C'

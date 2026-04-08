@@ -84,6 +84,23 @@ def test_operation_iterate_matches():
     assert selector is None
     assert pointer == JSONPointer('')
 
+    # Unicode chars have been an issue, so we check if the pointer can be built correctly
+    matches = Operation.iterate_matches(make_jsonpath('$["°C"].a'), {
+        "°C": {
+            "a": 42
+        }
+    }, none_allowed=False)
+    assert len(matches) == 1
+    path, match, selector, pointer = matches[0]
+    assert pointer.parts[0] == '°C'
+
+    matches = Operation.iterate_matches(make_jsonpath('$["°C"]'), {
+        "°C": 42
+    }, none_allowed=False)
+    assert len(matches) == 1
+    path, match, selector, pointer = matches[0]
+    assert pointer.parts[-1] == '°C'
+
 
 def test_operation_iterate_matches_complex():
     matches = Operation.iterate_matches(make_jsonpath('$.classes.*.attributes.attributeA'), {

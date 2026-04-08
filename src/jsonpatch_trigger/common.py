@@ -26,7 +26,7 @@ def convert_pointer_to_path(pointer: JSONPointer) -> JSONPath:
 
 def escape_json_pointer_part(part: str) -> str:
     # According to RFC 6901
-    return part.replace('~', '~0').replace('/', '~1')
+    return part.replace('~', '~0').replace('/', '~1').encode('unicode-escape').decode('ascii')
 
 #
 #

@@ -2,9 +2,11 @@ from typing import Any
 
 import pytest
 from jsonpath import JSONPointer
+from pydantic import BaseModel
 
 from jsonpatch_trigger import make_jsonpath, OperationExecutionContext, AutomatedOperationProducer, Operation, AddOperation
 from jsonpatch_trigger.execution import can_pointer_match_path
+from jsonpatch_trigger.tracking import TrackingJSONPatch
 
 
 def test_can_pointer_match_path():
@@ -28,7 +30,20 @@ def listener_class():
     return Listener
 
 
-def test_operation_execution_context_serialize_and_deserialize(listener_class):
+@pytest.fixture
+def testing_operation_class():
+    class TestingPydanticClass(BaseModel):
+        x: int
+
+    class TestingOperationClass(Operation):
+        field: TestingPydanticClass
+        def register_rfc_operations(self, document: Any, patch_runner: TrackingJSONPatch):
+            ...
+
+    return TestingOperationClass
+
+
+def test_operation_execution_context_serialize_and_deserialize(listener_class, testing_operation_class):
     ctx = OperationExecutionContext()
 
     ctx.register(listener_class(triggers=[
@@ -36,6 +51,8 @@ def test_operation_execution_context_serialize_and_deserialize(listener_class):
     ]))
 
     ctx.add_custom_operation(AddOperation(locator=make_jsonpath('$'), value={'a': 42}))
+
+    ctx.add_custom_operation(testing_operation_class(locator=make_jsonpath('$.x'), field={'x': 42}))
 
     data = ctx.serialize()
 
@@ -51,7 +68,7 @@ def test_operation_execution_context_serialize_and_deserialize(listener_class):
     assert 'triggers' in producer and "$['a']['b']['c']" in producer['triggers']
 
     deserialized = OperationExecutionContext.deserialize(data)
-    assert len(deserialized.operations) == 1
+    assert len(deserialized.operations) == 2
     assert len(deserialized.listeners) == 1
 
     assert deserialized.operations[0].locator == make_jsonpath('$')
