@@ -8,7 +8,7 @@ from pydantic import PrivateAttr, Field, ConfigDict, BaseModel, Discriminator, T
     ValidationError, model_serializer, field_serializer
 
 from jsonpatch_trigger import json_type
-from jsonpatch_trigger.common import profile
+from jsonpatch_trigger.common import profile, make_jsonpath
 from jsonpatch_trigger.compat import PydanticJSONPath
 from jsonpatch_trigger.parents import make_parent_key_pairs
 from jsonpatch_trigger.preconditions import Precondition, IsArrayOrObjectPreconditionFunction, ExistsPreconditionFunction, \
@@ -438,6 +438,7 @@ class RemoveOperation(Operation, RemovalRegistrationMixin):
 
 class CompoundOperation(Operation):
 
+    locator: PydanticJSONPath = make_jsonpath('$')
     inner_operations: list[Operation]
 
     def register_rfc_operations(self, document: Any, patch_runner: TrackingJSONPatch):

@@ -24,7 +24,7 @@ def test_can_pointer_match_path():
 @pytest.fixture
 def listener_class():
     class Listener(AutomatedOperationProducer):
-        def run(self, document: Any, modified_pointers: list[JSONPointer]) -> list[Operation]:
+        def run(self, document: Any, modified_pointers: list[JSONPointer], settings: dict[str, Any]) -> list[Operation]:
             return []
 
     return Listener

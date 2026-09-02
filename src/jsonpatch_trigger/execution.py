@@ -107,7 +107,8 @@ class AutomatedOperationProducer(BaseModel, abc.ABC):
     def run(
             self,
             document: Any,
-            modified_pointers: list[JSONPointer]
+            modified_pointers: list[JSONPointer],
+            settings: dict[str, Any]
     ) -> list[Operation]:
         ...
 
@@ -169,12 +170,15 @@ class AutomatedOperationProducer(BaseModel, abc.ABC):
 class OperationExecutionContext:
 
     def __init__(self):
-        self.listeners: dict[JSONPath, list[AutomatedOperationProducer]] = collections.defaultdict(list)
+        # self.listeners: dict[JSONPath, list[AutomatedOperationProducer]] = collections.defaultdict(list)
+        self.listeners: list[AutomatedOperationProducer] = []
         self.operations: collections.deque[Operation] = collections.deque()
+        self.settings: dict[str, Any] | object = {}
 
     def register(self, producer: AutomatedOperationProducer):
-        for trigger in producer.triggers:
-            self.listeners[trigger].append(producer)
+        # for trigger in producer.triggers:
+        #     self.listeners[trigger].append(producer)
+        self.listeners.append(producer)
 
     def add_custom_operations(self, operations: list[Operation]):
         self.operations.extend(operations)
@@ -185,6 +189,12 @@ class OperationExecutionContext:
     def insert_custom_operation(self, operation: Operation, index: int):
         self.operations.insert(index, operation)
 
+    def add_setting(self, name: str, value: Any):
+        self.settings[name] = value
+
+    def use_settings(self, settings: Any):
+        self.settings = settings
+
     @profile
     def run(self, document: Any) -> Any:
 
@@ -192,21 +202,41 @@ class OperationExecutionContext:
             operation = self.operations.popleft()
             change_tracker = ChangeTracker()
             document = operation.apply_rfc(document, change_tracker)
-            for trigger in self.listeners.keys():
-                # TODO we might encounter scenarios where we would want to also trigger on removal
-                relevant_pointers = [p for p in change_tracker.additions if can_pointer_match_path(p, trigger)]
+
+            trigger_pointer_cache = {}
+            for producer in self.listeners:
+
+                relevant_pointers = []
+                for trigger in producer.triggers:
+                    if trigger in trigger_pointer_cache:
+                        relevant_pointers.extend(trigger_pointer_cache[trigger])
+                    else:
+                        new_relevant_pointers = [
+                            p
+                            for p in change_tracker.additions
+                            if can_pointer_match_path(p, trigger)
+                        ]
+                        relevant_pointers.extend(new_relevant_pointers)
+                        trigger_pointer_cache[trigger] = new_relevant_pointers
                 if relevant_pointers:
-                    for producer in self.listeners[trigger]:
-                        added_operations = producer.run(document, relevant_pointers)
-                        self.operations.extendleft(reversed(added_operations))
+                    added_operations = producer.run(document, relevant_pointers, self.settings)
+                    self.operations.extendleft(reversed(added_operations))
+
+            # for trigger in self.listeners.keys():
+            #     # TODO we might encounter scenarios where we would want to also trigger on removal
+            #     relevant_pointers = [p for p in change_tracker.additions if can_pointer_match_path(p, trigger)]
+            #     if relevant_pointers:
+            #         for producer in self.listeners[trigger]:
+            #             added_operations = producer.run(document, relevant_pointers, self.settings)
+            #             self.operations.extendleft(reversed(added_operations))
         return document
 
     def serialize(self) -> dict:
-        flat_producer_lookup = {
-            producer.__class__.__name__: producer
-            for producers in self.listeners.values()
-            for producer in producers
-        }
+        # flat_producer_lookup = {
+        #     producer.__class__.__name__: producer
+        #     for producers in self.listeners.values()
+        #     for producer in producers
+        # }
         return dict(
             operations=[
                 op.model_dump()
@@ -214,7 +244,8 @@ class OperationExecutionContext:
             ],
             producers=[
                 producer.model_dump()
-                for producer in flat_producer_lookup.values()
+                # for producer in flat_producer_lookup.values()
+                for producer in self.listeners
             ]
         )
         # return OperationExecutionDTO(
